@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ph.edu.comteq.lesssoneleven.ui.theme.LesssonelevenTheme
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -168,18 +171,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun NoteListScreen(viewModel: NoteViewModel, modifier: Modifier = Modifier) {
-    val notes by viewModel.allNotes.collectAsState(initial = emptyList())
+    val notesWithTags by viewModel.allNotesWithTags.collectAsState(initial = emptyList())
 
-    LazyColumn(modifier = modifier) {
-        items(notes) { note ->
-//            Text(text = note.title)
-            NoteCard(note)
+    LazyColumn(modifier = modifier.fillMaxWidth().padding(8.dp)) {
+        items(notesWithTags) { note ->
+            NoteCard(note = note.note, tags = note.tags)
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NoteCard(note: Note, modifier: Modifier = Modifier){
+fun NoteCard(
+    note: Note,
+    tags: List<Tag> = emptyList(),
+    modifier: Modifier = Modifier){
     Card (
         modifier = modifier.fillMaxWidth().padding(8.dp),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -194,10 +200,26 @@ fun NoteCard(note: Note, modifier: Modifier = Modifier){
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
             Text(
+                text = note.category,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
                 text = note.title,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
+
+            //tags
+            if (tags.isNotEmpty()) {
+                FlowRow {
+                    tags.forEach {
+                        Text(
+                            text = it.name
+                        )
+                    }
+                }
+            }
         }
     }
 }
