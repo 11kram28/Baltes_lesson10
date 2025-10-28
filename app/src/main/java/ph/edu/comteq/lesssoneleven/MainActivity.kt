@@ -60,8 +60,6 @@ class MainActivity : ComponentActivity() {
                 // MAIN LAYOUT
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-
-                    // ✅ TOP BAR SECTION
                     topBar = {
                         if (isSearchActive) {
                             // SEARCH MODE
