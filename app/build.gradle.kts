@@ -43,6 +43,8 @@ android {
 }
 
 dependencies {
+
+    implementation("androidx.navigation:navigation-compose:2.9.5") // use a version that is compatible with your system
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
