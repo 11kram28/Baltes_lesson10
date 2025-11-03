@@ -6,22 +6,29 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -43,8 +51,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -120,28 +131,27 @@ fun NoteEditScreen(
     viewModel: NoteViewModel,
     onNavigateBack: () -> Unit
 ) {
-    // FIX: Get the specific note using a LaunchedEffect
     var existingNote by remember { mutableStateOf<Note?>(null) }
 
-    // State for the form fields
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("General") }
+    var category by remember { mutableStateOf("") }
 
-    // Load the note when the screen opens or noteId changes
+    // For delete confirmation dialog
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Load note details when noteId changes
     LaunchedEffect(noteId) {
         if (noteId != null) {
-            // Get the note from database
             val note = viewModel.getNoteById(noteId)
             existingNote = note
             title = note?.title ?: ""
             content = note?.content ?: ""
-            category = note?.category ?: "General"
+            category = note?.category ?: ""
         } else {
-            // New note - reset fields
             title = ""
             content = ""
-            category = "General"
+            category = ""
             existingNote = null
         }
     }
@@ -156,6 +166,17 @@ fun NoteEditScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
+                    }
+                },
+                actions = {
+                    // Delete button only shows if editing an existing note
+                    if (noteId != null) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Delete Note"
+                            )
+                        }
                     }
                 }
             )
@@ -205,7 +226,7 @@ fun NoteEditScreen(
             Button(
                 onClick = {
                     if (noteId == null) {
-                        // Create new note
+                        // Add new note
                         viewModel.insert(
                             Note(
                                 title = title,
@@ -229,10 +250,35 @@ fun NoteEditScreen(
                     onNavigateBack()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = title.isNotEmpty() && content.isNotEmpty() // Optional: disable if empty
+                enabled = title.isNotEmpty() && content.isNotEmpty()
             ) {
                 Text("Save Note")
             }
+        }
+
+        // Delete confirmation dialog
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Note") },
+                text = { Text("Are you sure you want to delete this note? This action cannot be undone.") },
+                confirmButton = {
+                    Button(onClick = {
+                        existingNote?.let { note ->
+                            viewModel.delete(note)
+                            showDeleteDialog = false
+                            onNavigateBack()
+                        }
+                    }) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
@@ -410,49 +456,123 @@ fun NotesListScreen(
 @Composable
 fun NoteCard(
     note: Note,
-    tags: List<Tag> = emptyList(),
-    onNoteClick: () -> Unit = {}, // ADD THIS PARAMETER
-    modifier: Modifier = Modifier
-){
-    Card (
+    tags: List<Tag> = emptyList(),  // Optional tags list
+    modifier: Modifier = Modifier,
+    onNoteClick: () -> Unit = {} // Handle card clicks
+) {
+    Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        elevation = CardDefaults.cardElevation(2.dp),
-        onClick = onNoteClick // ADD CLICK HANDLER
-    ){
-        Column (
-            modifier = Modifier.padding(16.dp)
-        ){
-            Text(
-                text = DateUtils.formatDateTime(note.createdAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            Text(
-                text = note.category,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            .padding(8.dp)
+            .clickable { onNoteClick() },
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+
+            // Date and Category Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = DateUtils.formatDateTime(note.updatedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+
+                // Show category if available
+                if (note.category.isNotEmpty()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = note.category,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+
+            // Title
             Text(
                 text = note.title,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 4.dp)
             )
 
-            //tags
+            // Content preview
+            if (note.content.isNotEmpty()) {
+                Text(
+                    text = note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+
+            // Tags
             if (tags.isNotEmpty()) {
-                FlowRow {
-                    tags.forEach {
-                        Text(
-                            text = it.name
-                        )
+                FlowRow(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    tags.forEach { tag ->
+                        TagChip(tag = tag)
                     }
                 }
             }
         }
     }
 }
+
+
+
+@Composable
+fun TagChip(
+    tag: Tag,
+    onRemove: (() -> Unit)? = null // Optional remove function
+) {
+    Surface(
+        color = Color(android.graphics.Color.parseColor(tag.color)).copy(alpha = 0.2f),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(
+            1.dp,
+            Color(android.graphics.Color.parseColor(tag.color))
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = tag.name,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(android.graphics.Color.parseColor(tag.color))
+            )
+
+            // Optional “X” button for tag removal
+            onRemove?.let {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove tag",
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clickable { it() },
+                    tint = Color(android.graphics.Color.parseColor(tag.color))
+                )
+            }
+        }
+    }
+}
+
 
 
 

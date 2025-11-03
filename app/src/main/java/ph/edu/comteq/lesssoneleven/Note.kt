@@ -11,12 +11,14 @@ data class Note(
     val id: Int = 0,
     val title: String,
     val content: String,
+    // NEW: Category field (simple text - like "Work", "Personal", "School")
     val category: String = "",
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at")
-    val updatedAt: Long = System.currentTimeMillis()
-
+    val updatedAt: Long = System.currentTimeMillis(),
 )
+
+
 
 
